@@ -83,7 +83,7 @@ def test(model, device, test_loader, dataset, FLAGS):
                 auc_values.append(auc) 
             loss = lm_loss + kl_loss
             total_loss += loss.item() * data.num_graphs
-    return total_loss, lm_loss, kl_loss, mse_loss, test_ci, rm2, auc_values, G, P
+    return total_loss, mse_loss, test_ci, rm2, auc_values, G, P
 
 def experiment(FLAGS, dataset, device):
     logging('Starting program', FLAGS)
@@ -133,7 +133,7 @@ def experiment(FLAGS, dataset, device):
 
             if (epoch + 1) % 20 == 0:
                 # Test model
-                total_loss, lm_loss, kl_loss, mse_loss, test_ci, rm2, auc_values, G, P = test(model, device, test_loader, dataset, FLAGS)
+                total_loss, mse_loss, test_ci, rm2, auc_values, G, P = test(model, device, test_loader, dataset, FLAGS)
                 filename = f"saved_models/deepdtagen_model_{dataset}.pth"
                 if mse_loss < best_mse:
                     best_mse = mse_loss
@@ -143,8 +143,6 @@ def experiment(FLAGS, dataset, device):
                 print(f"MSE: {mse_loss.item():.4f}")
                 print(f"CI: {test_ci:.4f}")
                 print(f"RM2: {rm2:.4f}")
-                print(f"LM: {lm_loss.item():.4f}")
-                print(f"KL: {kl_loss.item():.4f}")
                 print(f"AUCs: {', '.join([f'{auc:.4f}' for auc in auc_values])}")
 
         # Save estimated and true labels
