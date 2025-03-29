@@ -25,7 +25,7 @@ else:
   generator = torch.Generator().manual_seed(seed)
 
 
-"""Train the GraphVAE model using the specified data and hyperparameters."""
+"""Train the DeepDTAGen model using the specified data and hyperparameters."""
 
 def train(model, device, train_loader, optimizer, mse_f, epoch, train_data, FLAGS):
     model.train()
@@ -53,7 +53,7 @@ def train(model, device, train_loader, optimizer, mse_f, epoch, train_data, FLAG
     return model
 
 def test(model, device, test_loader, dataset, FLAGS):
-    """Test the GraphVAE model on the specified data and report the results.""" 
+    """Test the DeepDTAGen model on the specified data and report the results.""" 
     print('Testing on {} samples...'.format(len(test_loader.dataset)))
     model.eval()
     total_true = torch.Tensor()
