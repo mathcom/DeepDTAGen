@@ -17,9 +17,8 @@ This is the implementation of DeepDTAGen: Multitask deep learning framework for 
 
 
 ## 🔍 Datasets:
-### Dataset Source:
-The KIBA and Davis datasets were obtained from the data repository hosted at https://github.com/hkmztrk/DeepDTA/tree/master/data, while the BindingDB dataset was obtained from https://github.com/YongtaoQian/DoubleSG-DTA/blob/main/data.
-
+### Data:
+The data is available in CSV format within the 'data.rar' file. Each file is named according to its respective dataset and whether it is for training or testing.
 ## 🧠 Model Architecture
 The DeepDTAGen architecture consists of the following components:
 
