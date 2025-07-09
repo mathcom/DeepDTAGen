@@ -2,13 +2,11 @@ import torch
 import torch.nn as nn
 import pickle
 from tqdm import tqdm
-import pandas as pd
 from torch.utils.data import DataLoader
 import argparse
 
 from utils import *
 from model import DeepDTAGen
-from datasets import TestbedDataset
 
 def main(dataset_name):
     # Setup device
@@ -22,8 +20,10 @@ def main(dataset_name):
     # Threshold values based on the dataset
     if dataset_name == 'kiba':
         thresholds = [10.0, 10.50, 11.0, 11.50, 12.0, 12.50]
-    elif dataset_name == 'davis':
+        aupr_threshold = 12.1
+    elif dataset_name in ['davis', 'bindingdb']:
         thresholds = [5.0, 5.50, 6.0, 6.50, 7.0, 7.50, 8.0, 8.50]
+        aupr_threshold = 7.0
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
 
@@ -62,10 +62,11 @@ def main(dataset_name):
         rms_error = rmse(ground_truth, predicted)
         pearson_corr = pearson(ground_truth, predicted)
         spearman_corr = spearman(ground_truth, predicted)
+        aupr_value = get_aupr(predicted, ground_truth, aupr_threshold)
 
         # Calculate AUC values for each threshold
         auc_values = [
-            get_aupr((predictions.cpu() > threshold).int(), data.y.view(-1, 1).float().cpu())
+            get_auc((predictions.cpu() > threshold).int(), data.y.view(-1, 1).float().cpu())
             for threshold in thresholds
         ]
 
