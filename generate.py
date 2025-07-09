@@ -2,22 +2,15 @@ import argparse
 import pickle
 from pathlib import Path
 import pandas as pd
-import rdkit
-
-import torch
-from rdkit import RDLogger
-from rdkit.Chem import MolFromSmiles
+from rdkit import RDLogger, Chem
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from model import DeepDTAGen
-from torch.utils.data import DataLoader
-from rdkit import Chem
-
 from utils import *
-
-import sys
-print(sys.executable)
+import torch
 
 RDLogger.DisableLog('rdApp.*')
+
 
 def load_model(model_path, tokenizer_path):
     with open(tokenizer_path, 'rb') as f:
@@ -29,68 +22,57 @@ def load_model(model_path, tokenizer_path):
 
     return model, tokenizer
 
+
 def format_smiles(smiles):
-    mol = MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
-
-    smiles = Chem.MolToSmiles(mol, isomericSmiles=True)
-
-    return smiles
+    return Chem.MolToSmiles(mol, isomericSmiles=True)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('dataset', type=str, choices=['kiba', 'bindingdb'], help='the dataset name (kiba or davis)')
+    parser.add_argument('dataset', type=str, choices=['kiba', 'bindingdb'], help='the dataset name (kiba or bindingdb)')
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'], help='device to use (cpu or cuda)')
-
     args = parser.parse_args()
 
+    dataset = args.dataset
+    device = args.device
+
     config = {
-        'input_path': 'your_input_path',
-        'output_dir': 'your_output_directory',
-        'model_path': 'your_model_weights_path.pth',
-        'tokenizer_path': 'your_tokenizer_path.pkl',
+        'input_path': f'data/{dataset}_test.csv',
+        'model_path': f'models/deepdtagen_model_{dataset}.pth',
+        'tokenizer_path': f'data/{dataset}_tokenizer.pkl',
         'n_mol': 40000,
         'filter': True,
         'batch_size': 1,
         'seed': -1
     }
-    dataset = args.dataset
-    device = args.device
 
-    model_path = f'models/deepdtagen_model_{dataset}.pth'
-    tokenizer_path = f'data/{dataset}_tokenizer.pkl'
+    # Load the input CSV
+    input_df = pd.read_csv(config['input_path'])
+    input_df['Generated_SMILES'] = None
 
+    # Load dataset and model
     test_data = TestbedDataset(root="data", dataset=f"{dataset}_test")
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
-
-    output_dir = Path(f'generated_results/{dataset}')
-    output_dir.mkdir(parents=False, exist_ok=True)
-
-    model, tokenizer = load_model(model_path, tokenizer_path)
+    model, tokenizer = load_model(config['model_path'], config['tokenizer_path'])
 
     model.eval()
     model.to(device)
 
-    output_path = output_dir / 'generated_smiles.txt'
-    with open(output_path, 'a') as output_file:
-        n_epoch = (config['n_mol'] + config['batch_size'] - 1) // config['batch_size']
-        generated_smiles = []
-
-        for i, data in enumerate(tqdm(test_loader)):
-            data.to(config['device'])
-            res = tokenizer.get_text(model.generate(data))
-            generated_smiles.extend(res)
-
-        generated_smiles = generated_smiles[:config['n_mol']]
+    # Generate SMILES
+    for i, data in enumerate(tqdm(test_loader)):
+        data.to(device)
+        generated = tokenizer.get_text(model.generate(data))
+        generated = generated[:config['n_mol']]
 
         if config['filter']:
-            generated_smiles = [format_smiles(smiles) for smiles in generated_smiles]
-            generated_smiles = [smiles for smiles in generated_smiles if smiles]
-            generated_smiles = list(set(generated_smiles))
+            generated = [format_smiles(smi) for smi in generated]
+            generated = [smi for smi in generated if smi]
 
-        output_file.write('\n'.join(generated_smiles) + '\n')
+        input_df.loc[i, 'Generated_SMILES'] = generated[0] if generated else None
 
-    print('Generation complete')
+    output_path = Path(f"{dataset}_generated.csv")
+    input_df.to_csv(output_path, index=False)
+    print(f'Generation complete. Output saved to {output_path}')
