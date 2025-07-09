@@ -121,6 +121,21 @@ ii. Train the model
 conda activate DeepDTAGen
 python training.py
 ```
+## 💊 Molecule Generation
+To generate molecules using the trained model, simply run the following script
+```sh
+python generate.py
+```
+## 📊 Model Evaluation
+To evaluate the performance of the predictive model, run the following command
+```sh
+python test.py
+```
+## 🎯 Generative Model Evaluation
+To evaluate the generative performance of the model, run
+```sh
+python generation_evaluation.py
+```
 
 ## 📧 Contact
 Have a question? or suggestion Feel free to reach out to me!.  
