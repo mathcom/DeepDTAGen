@@ -238,7 +238,15 @@ def get_rm2(ys_orig,ys_line):
     r02 = squared_error_zero(ys_orig, ys_line)
     return r2 * (1 - np.sqrt(np.absolute((r2*r2)-(r02*r02))))
 
-def get_aupr(y_true,y_pred):
+def get_auc(y_true,y_pred):
     precision, recall, thresholds = precision_recall_curve(y_true,y_pred)
     roc_aupr = auc(recall,precision)
     return roc_aupr
+
+def get_aupr(predictions, true_labels, threshold):
+    """Calculate Area Under Precision-Recall Curve (AUPR) at a given threshold."""
+    binary_pred = (predictions > threshold).astype(int)
+    binary_true = (true_labels > threshold).astype(int)
+    
+    # Calculate AUPR
+    return average_precision_score(binary_true, binary_pred)
