@@ -1,0 +1,6 @@
+__pycache__
+.ipynb_checkpoints
+deepdtagen/__pycache__
+deepdtagen/.ipynb_checkpoints
+
+models
