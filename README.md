@@ -35,7 +35,7 @@ The DeepDTAGen architecture consists of the following components:
 
 4. 🎯 **Prediction (Fully-Connected Module)**: The prediction block utilizes the extracted features from the Drug Encoder (PMVO) and GCNN for target proteins and predicts the affinity between the given drug and the target.
 
-![Model](model.jpg)
+![Model](figs/model.png)
 
 ##🛠️ Preprocessing
 + Drugs: The SMILES string representation are converted to the chemical structure using the RDKit library. We then use NetworkX to further convert it to graph representation.
@@ -99,12 +99,8 @@ The whole implementation of DeepDTAGen is based on PyTorch.
 + generata.py: The generate.py script is employed to create drugs based on a given condition using latent space and random noise. 
 
 ## Demo
-We have provided a DEMO directory, having two files "DEMO_Affinity.py" and "DEMO_Generation.py". "DEMO_Affinity.py" can be used to demonstrate affinity prediction, allowing users to test our model using a sample input. While "DEMO_Generation.py", can be used for drug generation, providing a test case for evaluating our model's performance in generating drugs. 
-+ DEMO_Affinity.py for affinity prediction 
-+ DEMO_Generation.py for drug generation.
+We have provided a DEMO file "DEMO_AffinityPrediction+DrugGeneration.ipynb". It can be used to demonstrate affinity prediction, allowing users to test our model using a sample input. It can be also used for drug generation, providing a test case for evaluating our model's performance in generating drugs. 
 Running these files takes approximately 1 to 2 seconds.
-Expected results for the given input in the DEMO_Affinity.py is (predicted affinity between the given inputs: 6.255425453186035)
-Expected result for the given input in the DEMO_Generation.py is (generated drug: O=C(c1cc(C(F)(F)F)ccc1F)N(C1CCN(C(=O)c2ccc(Br)cc2)CC1)C(=O)N1CCCC1 based on the given input)
 
 ## 🤖🎛️ Training
 The DeepDTAGen is trained using PyTorch and PyTorch Geometric libraries, with the support of NVIDIA GeForce RTX 2080 Ti GPU for the back-end hardware.
