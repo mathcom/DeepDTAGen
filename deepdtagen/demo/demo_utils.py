@@ -1,26 +1,23 @@
-import torch
-import torch.nn as nn
-import pickle
-from tqdm import tqdm
-import pandas as pd
-import argparse
-from rdkit import Chem
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from utils import *
-import rdkit
-import networkx as nx
-
-import os
-from torch_geometric.data import InMemoryDataset
-from torch_geometric import data as DATA
-import torch
-import numpy as np
-import torch
-from torch_geometric.data import InMemoryDataset, Batch
 import re
+import sys
+import pickle
+import argparse
 from datetime import datetime
+
+import pandas as pd
+import numpy as np
+import networkx as nx
+from tqdm import tqdm
+
+import rdkit
+from rdkit import Chem
+
+import torch
+from torch_geometric import data as DATA
+from torch_geometric.data import InMemoryDataset, Batch
+
+from deepdtagen.utils import *
 
 
 def format_smiles(smiles):
@@ -100,15 +97,15 @@ def seq_cat(prot):
     return x
 
 def process_latent_a(smile, protein_seq):
-    tokenizer_file = f'data/{smile}_tokenizer.pkl'
+    #tokenizer_file = f'data/{smile}_tokenizer.pkl'
     tokenizer = Tokenizer(Tokenizer.gen_vocabs(smile))
 
     smile_graph = {}
     g = smile_to_graph(smile)
     smile_graph[smile] = g
 
-    with open(tokenizer_file, 'wb') as file:
-        pickle.dump(tokenizer, file)
+    #with open(tokenizer_file, 'wb') as file:
+    #    pickle.dump(tokenizer, file)
     XT = seq_cat(protein_seq)
     name = datetime.now().strftime("%Y%m%d%H%M%S")
     data = TestbedDataset(root='data', dataset=name, xd=np.asarray([smile]), xt=np.asarray([XT]),  smile_graph=smile_graph)
@@ -116,15 +113,15 @@ def process_latent_a(smile, protein_seq):
     return data
 
 def process_latent(smile, protein_seq, affinity):
-    tokenizer_file = f'data/{smile}_tokenizer.pkl'
+    #tokenizer_file = f'data/{smile}_tokenizer.pkl'
     tokenizer = Tokenizer(Tokenizer.gen_vocabs(smile))
 
     smile_graph = {}
     g = smile_to_graph(smile)
     smile_graph[smile] = g
 
-    with open(tokenizer_file, 'wb') as file:
-        pickle.dump(tokenizer, file)
+    #with open(tokenizer_file, 'wb') as file:
+    #    pickle.dump(tokenizer, file)
     XT = seq_cat(protein_seq)
     Y = float(affinity)
     Y = np.asarray([Y])
@@ -208,19 +205,20 @@ class Tokenizer:
 class TestbedDataset(InMemoryDataset):
     def __init__(self, root='/tmp', dataset='davis', 
                  xd=None, xt=None, transform=None,
-                 pre_transform=None,smile_graph=None):
+                 pre_transform=None, smile_graph=None):
 
         super(TestbedDataset, self).__init__(root, transform, pre_transform)
         self.dataset = dataset
         self.data_l = []
         self.pad_token = Tokenizer.SPECIAL_TOKENS.index('<pad>')
-        if os.path.isfile(self.processed_paths[0]):
-            print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
-            self.data, self.slices = torch.load(self.processed_paths[0])
-        else:
-            print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
-            self.process(xd, xt, smile_graph)
-            self.data, self.slices = torch.load(self.processed_paths[0])
+        #if os.path.isfile(self.processed_paths[0]):
+        #    print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
+        #    self.data, self.slices = torch.load(self.processed_paths[0])
+        #else:
+        #    print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
+        #    self.process(xd, xt, smile_graph)
+        #    self.data, self.slices = torch.load(self.processed_paths[0])
+        self.data, self.slices = self.process(xd, xt, smile_graph)
 
     @property
     def raw_file_names(self):
@@ -264,11 +262,13 @@ class TestbedDataset(InMemoryDataset):
 
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
-        print('Data preparation Done!. Saving to file.')
-        data, slices = self.collate(data_list)
-        torch.save((data, slices), self.processed_paths[0])
-
+        
         self.data_l = data_list
+        
+        #print('Data preparation Done!. Saving to file.')
+        data, slices = self.collate(data_list)
+        #torch.save((data, slices), self.processed_paths[0])
+        return data, slices
 
 
     def __len__(self):
@@ -280,19 +280,20 @@ class TestbedDataset(InMemoryDataset):
 class TestbedDataset2(InMemoryDataset):
     def __init__(self, root='/tmp', dataset='davis', 
                  xd=None, xt=None, y=None, transform=None,
-                 pre_transform=None,smile_graph=None):
+                 pre_transform=None, smile_graph=None):
 
         super(TestbedDataset2, self).__init__(root, transform, pre_transform)
         self.dataset = dataset
         self.data_l = []
         self.pad_token = Tokenizer.SPECIAL_TOKENS.index('<pad>')
-        if os.path.isfile(self.processed_paths[0]):
-            print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
-            self.data, self.slices = torch.load(self.processed_paths[0])
-        else:
-            print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
-            self.process(xd, xt, y, smile_graph)
-            self.data, self.slices = torch.load(self.processed_paths[0])
+        #if os.path.isfile(self.processed_paths[0]):
+        #    print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
+        #    self.data, self.slices = torch.load(self.processed_paths[0])
+        #else:
+        #    print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
+        #    self.process(xd, xt, y, smile_graph)
+        #    self.data, self.slices = torch.load(self.processed_paths[0])
+        self.data, self.slices = self.process(xd, xt, y, smile_graph)
 
     @property
     def raw_file_names(self):
@@ -338,11 +339,13 @@ class TestbedDataset2(InMemoryDataset):
 
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
-        print('Data preparation Done!. Saving to file.')
-        data, slices = self.collate(data_list)
-        torch.save((data, slices), self.processed_paths[0])
-
+            
         self.data_l = data_list
+        
+        #print('Data preparation Done!. Saving to file.')
+        data, slices = self.collate(data_list)
+        #torch.save((data, slices), self.processed_paths[0])
+        return data, slices
 
 
     def __len__(self):

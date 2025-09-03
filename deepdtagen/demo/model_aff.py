@@ -1,14 +1,19 @@
+import math
+from typing import Optional, Dict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 from torch_geometric.nn import GCNConv, global_max_pool as gmp
-from typing import Optional, Dict
-import math
+
 from fairseq.models import FairseqIncrementalDecoder
 from fairseq.modules import TransformerDecoderLayer, TransformerEncoderLayer
-from torch.nn.utils.rnn import pad_sequence
-from utils import Tokenizer
+
 from einops.layers.torch import Rearrange
+
+from deepdtagen.utils import Tokenizer
+
 
 class PositionalEncoding(nn.Module):
 
