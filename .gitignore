@@ -1,6 +1,14 @@
-__pycache__
-.ipynb_checkpoints
-deepdtagen/__pycache__
-deepdtagen/.ipynb_checkpoints
+# Do not upload
+data
+ckpt
+logs
 
-models
+# container
+.Trash-0
+
+# cache
+.ipynb_checkpoints
+ckpt/.ipynb_checkpoints
+logs/.ipynb_checkpoints
+models/__pycache__
+

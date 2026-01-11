@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import argparse
 
 from utils import *
-from model import DeepDTAGen
+from network import DeepDTAGen
 
 def main(dataset_name):
     # Setup device

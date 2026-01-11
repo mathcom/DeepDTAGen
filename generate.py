@@ -5,7 +5,7 @@ import pandas as pd
 from rdkit import RDLogger, Chem
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-from model import DeepDTAGen
+from network import DeepDTAGen
 from utils import *
 import torch
 

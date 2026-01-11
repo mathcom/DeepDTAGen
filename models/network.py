@@ -1,6 +1,8 @@
 import math
 from typing import Optional, Dict
 
+from einops.layers.torch import Rearrange
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,13 +12,8 @@ from torch_geometric.nn import GCNConv, global_max_pool as gmp
 from fairseq.models import FairseqIncrementalDecoder
 from fairseq.modules import TransformerDecoderLayer, TransformerEncoderLayer
 
-from einops.layers.torch import Rearrange
-
-from deepdtagen.utils import Tokenizer
-
 
 class PositionalEncoding(nn.Module):
-
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
@@ -30,7 +27,7 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        r"""Inputs of forward function
+        """Inputs of forward function
         Args:
             x: the sequence fed to the positional encoder model (required).
         Shape:
@@ -42,6 +39,7 @@ class PositionalEncoding(nn.Module):
 
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
+
 
 class Namespace:
     def __init__(self, argvs):
@@ -73,6 +71,7 @@ class TransformerEncoder(nn.Module):
         x = self.layer_norm(x)
         return x  # T x B x C
 
+
 class Encoder(torch.nn.Module):
     def __init__(self, Drug_Features, dropout, Final_dim):
         super(Encoder, self).__init__()
@@ -101,7 +100,7 @@ class Encoder(torch.nn.Module):
         self.Relu_activation = nn.ReLU()
         self.pp_seg_encoding = nn.Parameter(torch.randn(376))
     
-    def reparameterize(self, z_mean, logvar, batch, con):
+    def reparameterize(self, z_mean, logvar, batch, con, a):
         # Compute the KL divergence loss
         z_log_var = -torch.abs(logvar)
         kl_loss = -0.5 * torch.sum(1 + z_log_var - z_mean.pow(2) - z_log_var.exp()) / 64
@@ -115,7 +114,7 @@ class Encoder(torch.nn.Module):
         con_embedding = self.cond(con)
         
         # Add conditioning and auxiliary factor
-        z_ = z_ + con_embedding
+        z_ = z_ + con_embedding + a
         
         return z_, kl_loss
 
@@ -137,6 +136,7 @@ class Encoder(torch.nn.Module):
 
     def forward(self, data, con):
        x, edge_index, batch, num_nodes, affinity = data.x, data.edge_index, data.batch, data.c_size, data.y
+       a = affinity.view(-1, 1)
        GCNConv = self.GraphConv1(x, edge_index)
        GCNConv = self.Relu_activation(GCNConv)
        GCNConv = self.GraphConv2(GCNConv, edge_index)
@@ -146,7 +146,7 @@ class Encoder(torch.nn.Module):
        d_sequence, Mask = self.process_p(x, num_nodes, batch)
        mu = self.mean(d_sequence)
        logvar = self.var(d_sequence)
-       AMVO, kl_loss = self.reparameterize(mu, logvar, batch, con)
+       AMVO, kl_loss = self.reparameterize(mu, logvar, batch, con, a)
        x2 = gmp(x, batch)
        PMVO = self.Drug_FCs(x2)
        return d_sequence, AMVO, Mask, PMVO, kl_loss
@@ -206,25 +206,32 @@ class GatedCNN(nn.Module):
     def forward(self, data):
         target = data.target
         Embed = self.Protein_Embed(target)
+        
+        # Gated CNN 1st Layer
         conv1 = self.Protein_Conv1(Embed)  
         gate1 = torch.sigmoid(self.Protein_Gate1(Embed))
         GCNN1_Output = conv1 * gate1
         GCNN1_Output = self.relu(GCNN1_Output)
-        #GATED CNN 2ND LAYER
+        
+        # Gated CNN 2nd Layer
         conv2 = self.Protein_Conv2(GCNN1_Output)
         gate2 = torch.sigmoid(self.Protein_Gate2(GCNN1_Output)) 
         GCNN2_Output = conv2 * gate2                            
         GCNN2_Output = self.relu(GCNN2_Output)
-        #GATED CNN 3RD LAYER
+        
+        # Gated CNN 3rd Layer
         conv3 = self.Protein_Conv3(GCNN2_Output)
         gate3 = torch.sigmoid(self.Protein_Gate3(GCNN2_Output))
         GCNN3_Output = conv3 * gate3                           
         GCNN3_Output = self.relu(GCNN3_Output)
-        #FLAT TENSOR
+        
+        # FLAT TENSOR
         xt = GCNN3_Output.view(-1, 96 * 107)
-        #PROTEIN FULLY CONNECTED LAYER
+        
+        # PROTEIN FULLY CONNECTED LAYER
         xt = self.Protein_FC(xt)
         return xt, GCNN3_Output
+
 
 class FC(torch.nn.Module):
     def __init__(self, output_dim, n_output, dropout):
@@ -247,7 +254,8 @@ class FC(torch.nn.Module):
         Pridection = self.FC_layers(Combined)
         return Pridection
 
-# MAin CLass
+
+# Main CLass
 class DeepDTAGen(torch.nn.Module):
     def __init__(self, tokenizer):
         super(DeepDTAGen, self).__init__()
@@ -295,7 +303,7 @@ class DeepDTAGen(torch.nn.Module):
         self.eos_value = tokenizer.s2i['<eos>']
         self.pad_value = tokenizer.s2i['<pad>']
         self.word_embed = nn.Embedding(vocab_size, self.hidden_dim)
-        self.unk_index = Tokenizer.SPECIAL_TOKENS.index('<unk>')
+        self.unk_index = tokenizer.SPECIAL_TOKENS.index('<unk>')
 
         # Expand and Fusion layers
         self.expand = nn.Sequential(
@@ -338,9 +346,28 @@ class DeepDTAGen(torch.nn.Module):
         # Expand and fuse latent variables
         zzz, encoder_mask = self.expand_then_fusing(AMVO, mask, vss)
         
-        Pridection = self.fc(PMVO, Protein_vector)
+        # Prepare target sequence for decoding
+        targets = data.target_seq
+        _, target_length = targets.shape
+        target_mask = torch.triu(torch.ones(target_length, target_length, dtype=torch.bool), diagonal=1).to(targets.device)
+        target_embed = self.word_embed(targets)
+        target_embed = self.pos_encoding(target_embed.permute(1, 0, 2).contiguous())
         
-        return Pridection
+        # Decode the target sequence
+        output = self.decoder(target_embed, zzz, x_mask=target_mask, mem_padding_mask=encoder_mask).permute(1, 0, 2).contiguous()
+        prediction_scores = self.word_pred(output)  # batch_size, sequence_length, class
+
+        # Compute loss and predictions
+        shifted_prediction_scores = prediction_scores[:, :-1, :].contiguous()
+        targets = targets[:, 1:].contiguous()
+        batch_size, sequence_length, vocab_size = shifted_prediction_scores.size()
+        shifted_prediction_scores = shifted_prediction_scores.view(-1, vocab_size)
+        targets = targets.view(-1)
+        
+        Pridection = self.fc(PMVO, Protein_vector)
+        lm_loss = F.cross_entropy(shifted_prediction_scores, targets, ignore_index=self.pad_value)
+        
+        return Pridection, prediction_scores, lm_loss, kl_loss
 
 
     def _generate(self, zzz, encoder_mask, random_sample, return_score=False):

@@ -1,0 +1,31 @@
+services:
+  deepdtagen:
+    build: .
+    image: deepdtagen-dev:latest
+    container_name: deepdtagen_container
+    volumes:
+      - ./:/app                  # 소스 코드 동기화
+      - ./data:/app/data         # 데이터셋
+      - ./ckpt:/app/ckpt         # 모델 체크포인트
+      - ./logs:/app/logs         # TensorBoard 로그 공유
+    ports:
+      - "8888:8888"              # JupyterLab 포트만 유지
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # 컨테이너 실행 시 JupyterLab 자동 시작
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+
+  deepdtagen_tensorboard:
+    image: deepdtagen-dev:latest    # 위에서 build된 이미지를 재사용
+    container_name: tensorboard_service
+    volumes:
+      - ./logs:/app/logs         # deepdta 서비스가 쓰는 logs 폴더를 같이 바라봄
+    ports:
+      - "6006:6006"              # 텐서보드 전용 포트
+    # 컨테이너 시작 시 바로 텐서보드 실행
+    command: tensorboard --logdir=/app/logs --host=0.0.0.0 --port=6006
